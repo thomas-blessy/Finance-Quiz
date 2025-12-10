@@ -318,55 +318,68 @@ Answer: B</pre>
         }
 
         function parseQuizData(text) {
+            // --- STEP 1: PRE-PROCESSING / CLEANING ---
+            // The PDF often merges "Answer: X" onto the end of the previous line.
+            // We use Regex to find these hidden answers and force them to a new line.
+            
+            // 1. Force "Answer: X" to a new line if it is stuck to previous text
+            // Finds any char that isn't a newline, followed by "Answer:", and inserts a newline
+            let cleanText = text.replace(/([^\n])\s*(Answer:\s*[A-D])/gi, "$1\n$2");
+
+            // 2. Force "A.", "B)" etc to a new line if stuck to the end of Question text
+            // Finds text followed immediately by " A." or " B)" and inserts a newline
+            cleanText = cleanText.replace(/([^\n])\s+([A-D][\)\.]\s)/g, "$1\n$2");
+
+            // --- STEP 2: PARSING ---
             const questions = [];
-            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            const lines = cleanText.split('\n').map(line => line.trim()).filter(line => line);
             
             let currentQuestion = null;
-            let options = [];
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 
-                // Check for question
-                if (line.match(/^Question\s+\d+:/i)) {
+                // Flexible Regex for Question headers (Matches "Question 1:", "Question 1.", etc)
+                if (line.match(/^Question\s+\d+[:\.]?/i)) {
                     if (currentQuestion) {
                         questions.push(currentQuestion);
                     }
                     currentQuestion = {
-                        question: line.replace(/^Question\s+\d+:\s*/i, ''),
+                        // Remove the "Question X:" label to get just the text
+                        question: line.replace(/^Question\s+\d+[:\.]?\s*/i, ''),
                         options: [],
                         answer: ''
                     };
-                    options = [];
                 }
-                // Check for options (handles both A) and A. formats)
-                else if (line.match(/^[A-D][\)\.]/)) {
-                    const option = {
-                        letter: line.charAt(0),
-                        text: line.substring(2).trim()
-                    };
-                    options.push(option);
+                // Check for Answer (Check this BEFORE options to prevent false positives if order varies)
+                else if (line.match(/^Answer:\s*[A-D]/i)) {
                     if (currentQuestion) {
+                        currentQuestion.answer = line.match(/[A-D]/i)[0].toUpperCase();
+                    }
+                }
+                // Check for Options (Matches "A.", "A)", etc.)
+                else if (line.match(/^[A-D][\)\.]/)) {
+                    if (currentQuestion) {
+                        const option = {
+                            letter: line.charAt(0),
+                            text: line.substring(2).trim()
+                        };
                         currentQuestion.options.push(option);
                     }
                 }
-                // Check for answer
-                else if (line.match(/^Answer:\s*[A-D]/i)) {
-                    const answer = line.match(/[A-D]/i)[0].toUpperCase();
-                    if (currentQuestion) {
-                        currentQuestion.answer = answer;
-                    }
-                }
-                // Continue question text
-                else if (currentQuestion && currentQuestion.options.length === 0) {
+                // Handle multi-line question text
+                else if (currentQuestion && currentQuestion.options.length === 0 && !line.startsWith('Answer:')) {
+                    // If we haven't found options yet, this is likely part of the question text
                     currentQuestion.question += ' ' + line;
                 }
             }
             
-            if (currentQuestion && currentQuestion.answer) {
+            // Push the final question
+            if (currentQuestion) {
                 questions.push(currentQuestion);
             }
             
+            // Filter out incomplete questions (missing options or answer)
             return questions.filter(q => q.options.length > 0 && q.answer);
         }
 
