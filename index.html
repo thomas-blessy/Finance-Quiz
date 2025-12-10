@@ -221,10 +221,10 @@
             <div class="format-info">
                 <h3>📋 PDF Format Guide:</h3>
                 <pre>Question 1: What is 2+2?
-A) 3
-B) 4
-C) 5
-D) 6
+A. 3
+B. 4
+C. 5
+D. 6
 Answer: B
 
 Question 2: Capital of France?
@@ -233,7 +233,7 @@ B) Paris
 C) Berlin
 D) Rome
 Answer: B</pre>
-                <p style="margin-top: 10px; color: #856404;"><strong>Note:</strong> Each question should have "Question X:", followed by options (A, B, C, D), and "Answer: X" on a new line.</p>
+                <p style="margin-top: 10px; color: #856404;"><strong>Note:</strong> Supports both "A." and "A)" formats. Each question should have "Question X:", followed by options (A-D), and "Answer: X" on a new line.</p>
             </div>
         </div>
 
@@ -339,8 +339,8 @@ Answer: B</pre>
                     };
                     options = [];
                 }
-                // Check for options
-                else if (line.match(/^[A-D]\)/)) {
+                // Check for options (handles both A) and A. formats)
+                else if (line.match(/^[A-D][\)\.]/)) {
                     const option = {
                         letter: line.charAt(0),
                         text: line.substring(2).trim()
